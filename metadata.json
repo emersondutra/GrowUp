@@ -1,0 +1,6 @@
+{
+  "name": "ApexInvest — Dual-Market Wealth Tracker",
+  "description": "Institutional-grade dual-market investment tracker and analytical terminal for B3 (Brazil) and US (Wall Street) multi-custody portfolios.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
