@@ -35,6 +35,9 @@ interface LancarScreenProps {
   fxRate: number;
   onSuccessToast?: (msg: string) => void;
   onNavigateCarteira: () => void;
+  onOpenHistory?: () => void;
+  transactionsCount?: number;
+  onBackToMais?: () => void;
 }
 
 export const LancarScreen: React.FC<LancarScreenProps> = ({
@@ -44,6 +47,9 @@ export const LancarScreen: React.FC<LancarScreenProps> = ({
   fxRate,
   onSuccessToast,
   onNavigateCarteira,
+  onOpenHistory,
+  transactionsCount = 1,
+  onBackToMais,
 }) => {
   // Operation mode
   const [opType, setOpType] = useState<OperationType>('COMPRA');
@@ -231,6 +237,34 @@ export const LancarScreen: React.FC<LancarScreenProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 pb-28 pt-2">
+      {/* Top Header Row with Back Button and History Trigger */}
+      <div className="flex items-center justify-between pb-1 text-xs">
+        {onBackToMais ? (
+          <button
+            type="button"
+            onClick={onBackToMais}
+            className="text-[11px] font-bold text-[#38bdf8] hover:text-[#7bd0ff] font-display flex items-center gap-1 cursor-pointer transition-colors"
+          >
+            <span>← Voltar para Mais</span>
+          </button>
+        ) : (
+          <span className="text-[11px] font-bold text-[#94a3b8] uppercase tracking-wider font-display">
+            Nova Operação
+          </span>
+        )}
+
+        {onOpenHistory && (
+          <button
+            type="button"
+            onClick={onOpenHistory}
+            className="text-[11px] font-bold text-[#38bdf8] hover:text-[#7bd0ff] font-display flex items-center gap-1 cursor-pointer hover:underline"
+          >
+            <span>Histórico ({transactionsCount})</span>
+            <span>→</span>
+          </button>
+        )}
+      </div>
+
       {/* 1. Operation Type Switcher */}
       <div className="grid grid-cols-3 gap-2 p-1 bg-[#0d1c2d] rounded-xl border border-[#1e293b]">
         <button

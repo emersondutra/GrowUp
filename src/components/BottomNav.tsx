@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutGrid, PieChart, Banknote, PlusCircle, Sliders } from 'lucide-react';
+import { Home, PieChart, Banknote, LayoutGrid } from 'lucide-react';
 
-export type TabKey = 'inicio' | 'carteira' | 'proventos' | 'lancar' | 'raiox';
+export type TabKey = 'inicio' | 'carteira' | 'proventos' | 'mais' | 'lancar' | 'raiox';
 
 interface BottomNavProps {
   activeTab: TabKey;
@@ -10,11 +10,10 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab }) => {
   const navItems: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { key: 'inicio', label: 'Início', icon: LayoutGrid },
+    { key: 'inicio', label: 'Início', icon: Home },
     { key: 'carteira', label: 'Carteira', icon: PieChart },
     { key: 'proventos', label: 'Proventos', icon: Banknote },
-    { key: 'lancar', label: 'Lançar', icon: PlusCircle },
-    { key: 'raiox', label: 'Raio-X', icon: Sliders },
+    { key: 'mais', label: 'Mais', icon: LayoutGrid },
   ];
 
   return (
@@ -22,7 +21,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab }) 
       <div className="flex items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.key;
+          const isActive =
+            activeTab === item.key ||
+            (item.key === 'mais' && (activeTab === 'lancar' || activeTab === 'raiox'));
           return (
             <button
               key={item.key}

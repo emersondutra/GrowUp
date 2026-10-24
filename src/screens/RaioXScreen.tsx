@@ -10,33 +10,49 @@ import {
   DollarSign,
   Layers,
 } from 'lucide-react';
-import { Currency, Position } from '../types';
+import { BrokerBalance, Currency, Dividend, Position } from '../types';
 import { formatCurrency, formatPercent } from '../utils/formatters';
 
 interface RaioXScreenProps {
   positions: Position[];
+  brokerBalances?: BrokerBalance[];
+  dividends?: Dividend[];
   currency: Currency;
   hideValues: boolean;
   fxRate: number;
   onNavigateLancar: (ticker?: string) => void;
   onSuccessToast?: (msg: string) => void;
+  onBackToMais?: () => void;
 }
 
 export const RaioXScreen: React.FC<RaioXScreenProps> = ({
   positions,
+  brokerBalances = [],
+  dividends = [],
   currency,
   hideValues,
   fxRate,
   onNavigateLancar,
   onSuccessToast,
+  onBackToMais,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'REBALANCE' | 'BOLA_DE_NEVE' | 'RISCO'>('REBALANCE');
   const [contributionAmount, setContributionAmount] = useState<number>(5000);
   const [yearsHorizon, setYearsHorizon] = useState<number>(5);
   const [expectedYield, setExpectedYield] = useState<number>(8.65);
 
-  // Rebalancing calculation
-  const totalEquityBrl = 184270;
+  // Dynamic Portfolio Equity Calculation
+  const totalPositionsBrl = positions.reduce((acc, pos) => {
+    const isUSD = pos.currentPriceCurrency === 'USD';
+    const priceBrl = isUSD ? pos.currentPrice * fxRate : pos.currentPrice;
+    return acc + pos.totalQuantity * priceBrl;
+  }, 0);
+
+  const totalCashBrl = brokerBalances.reduce((acc, b) => {
+    return acc + (b.currency === 'USD' ? b.freeCash * fxRate : b.freeCash);
+  }, 0);
+
+  const totalEquityBrl = totalPositionsBrl + totalCashBrl;
   const newTotalEquityBrl = totalEquityBrl + contributionAmount;
 
   // Suggest orders to bring underweight assets toward target
@@ -44,6 +60,7 @@ export const RaioXScreen: React.FC<RaioXScreenProps> = ({
     const isUSD = pos.currentPriceCurrency === 'USD';
     const currentPriceBrl = isUSD ? pos.currentPrice * fxRate : pos.currentPrice;
     const currentValBrl = pos.totalQuantity * currentPriceBrl;
+    const actualPercent = totalEquityBrl > 0 ? (currentValBrl / totalEquityBrl) * 100 : 0;
     const targetValBrl = (pos.targetPercent / 100) * newTotalEquityBrl;
     const deltaBrl = targetValBrl - currentValBrl;
 
@@ -57,12 +74,13 @@ export const RaioXScreen: React.FC<RaioXScreenProps> = ({
       deltaBrl,
       suggestedUnits,
       currentPriceBrl,
-      isUnderweight: pos.currentPercent < pos.targetPercent,
+      currentValBrl,
+      actualPercent: parseFloat(actualPercent.toFixed(1)),
+      isUnderweight: actualPercent < pos.targetPercent,
     };
   });
 
-  // Snowball Compounding Projection
-  const currentAnnualDividendBrl = 38650 + 2450 * fxRate;
+  // Snowball Compounding Projection (Dynamic from actual equity & yield)
   const monthlyYieldDecimal = Math.pow(1 + expectedYield / 100, 1 / 12) - 1;
 
   // Calculate future monthly dividend after N years
@@ -78,6 +96,22 @@ export const RaioXScreen: React.FC<RaioXScreenProps> = ({
 
   return (
     <div className="space-y-4 pb-28 pt-2">
+      {/* Top Header with Back to Mais button */}
+      {onBackToMais && (
+        <div className="flex items-center justify-between pb-1 text-xs">
+          <button
+            type="button"
+            onClick={onBackToMais}
+            className="text-[11px] font-bold text-[#38bdf8] hover:text-[#7bd0ff] font-display flex items-center gap-1 cursor-pointer transition-colors"
+          >
+            <span>← Voltar para Mais</span>
+          </button>
+          <span className="text-[11px] text-[#94a3b8] font-mono-numbers">
+            Central de Inteligência
+          </span>
+        </div>
+      )}
+
       {/* 1. Sub Tabs Header */}
       <div className="grid grid-cols-3 gap-1 p-1 bg-[#0d1c2d] rounded-xl border border-[#1e293b] font-display">
         <button
@@ -179,7 +213,8 @@ export const RaioXScreen: React.FC<RaioXScreenProps> = ({
               Ordens Recomendadas pelo Algoritmo
             </h4>
 
-            {rebalancingSuggestions.map(({ pos, deltaBrl, suggestedUnits, isUnderweight }) => {
+            {/* Ordens Recomendadas */}
+            {rebalancingSuggestions.map(({ pos, deltaBrl, suggestedUnits, isUnderweight, actualPercent }) => {
               const isUSD = pos.currentPriceCurrency === 'USD';
               return (
                 <div
@@ -196,7 +231,7 @@ export const RaioXScreen: React.FC<RaioXScreenProps> = ({
                           {pos.ticker}
                         </span>
                         <span className="text-[10px] text-[#94a3b8]">
-                          {pos.currentPercent}% (Meta: {pos.targetPercent}%)
+                          {actualPercent}% (Meta: {pos.targetPercent}%)
                         </span>
                       </div>
                       <div className="text-[11px] text-[#94a3b8]">
@@ -279,12 +314,12 @@ export const RaioXScreen: React.FC<RaioXScreenProps> = ({
                 Renda Passiva Mensal Projetada
               </div>
               <div className="text-3xl font-bold text-[#ffb95f] font-mono-numbers">
-                {hideValues ? '••••••' : formatCurrency(projectedFutureMonthlyDividend, 'BRL')}
+                {hideValues ? '••••••' : formatCurrency(currency === 'USD' ? projectedFutureMonthlyDividend / fxRate : projectedFutureMonthlyDividend, currency)}
               </div>
               <div className="text-xs text-[#94a3b8] mt-1 font-mono-numbers">
                 Patrimônio estimado acumulado:{' '}
                 <strong className="text-white">
-                  {hideValues ? '••••••' : formatCurrency(simulatedBalance, 'BRL')}
+                  {hideValues ? '••••••' : formatCurrency(currency === 'USD' ? simulatedBalance / fxRate : simulatedBalance, currency)}
                 </strong>
               </div>
             </div>
@@ -302,43 +337,81 @@ export const RaioXScreen: React.FC<RaioXScreenProps> = ({
 
             {/* Currency exposure bar */}
             <div className="mb-4">
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="text-[#94a3b8]">Exposição Cambial</span>
-                <span className="font-mono-numbers font-bold text-white">58% BRL / 42% USD</span>
-              </div>
-              <div className="w-full h-3 rounded-full overflow-hidden flex bg-[#051424]">
-                <div style={{ width: '58%' }} className="h-full bg-[#10b981]" title="58% BRL" />
-                <div style={{ width: '42%' }} className="h-full bg-[#38bdf8]" title="42% USD" />
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-[#94a3b8] mt-1">
-                <span className="flex items-center gap-1">🟢 58% Real (B3)</span>
-                <span className="flex items-center gap-1">🔵 42% Dólar (Offshore)</span>
-              </div>
+              {(() => {
+                const totalBrlAssets = positions
+                  .filter((p) => p.market === 'BR')
+                  .reduce((acc, p) => acc + p.totalQuantity * p.currentPrice, 0) +
+                  brokerBalances
+                    .filter((b) => b.currency === 'BRL')
+                    .reduce((acc, b) => acc + b.freeCash, 0);
+
+                const totalUsdAssetsInBrl = positions
+                  .filter((p) => p.market === 'US')
+                  .reduce((acc, p) => acc + p.totalQuantity * p.currentPrice * fxRate, 0) +
+                  brokerBalances
+                    .filter((b) => b.currency === 'USD')
+                    .reduce((acc, b) => acc + b.freeCash * fxRate, 0);
+
+                const totalAll = totalBrlAssets + totalUsdAssetsInBrl;
+                const brlRatio = totalAll > 0 ? Math.round((totalBrlAssets / totalAll) * 100) : 60;
+                const usdRatio = 100 - brlRatio;
+
+                return (
+                  <>
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-[#94a3b8]">Exposição Cambial</span>
+                      <span className="font-mono-numbers font-bold text-white">{brlRatio}% BRL / {usdRatio}% USD</span>
+                    </div>
+                    <div className="w-full h-3 rounded-full overflow-hidden flex bg-[#051424]">
+                      <div style={{ width: `${brlRatio}%` }} className="h-full bg-[#10b981]" title={`${brlRatio}% BRL`} />
+                      <div style={{ width: `${usdRatio}%` }} className="h-full bg-[#38bdf8]" title={`${usdRatio}% USD`} />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-[#94a3b8] mt-1">
+                      <span className="flex items-center gap-1 font-mono-numbers">🟢 {brlRatio}% Real ({formatCurrency(currency === 'USD' ? totalBrlAssets / fxRate : totalBrlAssets, currency, false, hideValues)})</span>
+                      <span className="flex items-center gap-1 font-mono-numbers">🔵 {usdRatio}% Dólar ({formatCurrency(currency === 'USD' ? totalUsdAssetsInBrl / fxRate : totalUsdAssetsInBrl, currency, false, hideValues)})</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Custody risk bar */}
             <div>
               <div className="flex items-center justify-between text-xs mb-1.5">
                 <span className="text-[#94a3b8]">Diversificação de Custódia</span>
-                <span className="font-mono-numbers font-bold text-white">4 Corretoras</span>
+                <span className="font-mono-numbers font-bold text-white">{brokerBalances.length} Instituições</span>
               </div>
               <div className="space-y-2 text-xs font-mono-numbers">
-                <div className="flex items-center justify-between">
-                  <span>XP Investimentos</span>
-                  <span className="font-bold text-white">41% (R$ 312.450)</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Avenue Securities</span>
-                  <span className="font-bold text-white">32% (US$ 38.920)</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>NuInvest</span>
-                  <span className="font-bold text-white">19% (R$ 176.287)</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Interactive Brokers</span>
-                  <span className="font-bold text-white">8% (US$ 25.427)</span>
-                </div>
+                {brokerBalances.map((broker) => {
+                  const isUSD = broker.currency === 'USD';
+                  const cashValBrl = isUSD ? broker.freeCash * fxRate : broker.freeCash;
+                  const positionsValBrl = positions.reduce((acc, p) => {
+                    const allocation = p.brokerBreakdown?.find(
+                      (b) => b.broker === broker.name || (b.brokerFullName && b.brokerFullName.toLowerCase().includes(broker.name.toLowerCase()))
+                    );
+                    if (!allocation) return acc;
+                    const pIsUSD = p.currentPriceCurrency === 'USD';
+                    const priceBrl = pIsUSD ? p.currentPrice * fxRate : p.currentPrice;
+                    return acc + allocation.quantity * priceBrl;
+                  }, 0);
+                  const brokerTotalBrl = cashValBrl + positionsValBrl;
+                  const share = totalEquityBrl > 0 ? Math.round((brokerTotalBrl / totalEquityBrl) * 100) : 0;
+
+                  return (
+                    <div key={broker.id} className="flex items-center justify-between p-2 rounded-lg bg-[#051424] border border-[#1e293b]">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#38bdf8]" />
+                        <span className="text-white font-medium">{broker.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-white">{share}% </span>
+                        <span className="text-[#94a3b8] text-[11px]">
+                          ({formatCurrency(currency === 'USD' ? brokerTotalBrl / fxRate : brokerTotalBrl, currency, false, hideValues)})
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

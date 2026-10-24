@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
 import {
   Sparkles,
-  TrendingUp,
   Calendar,
-  Layers,
-  History,
   RotateCcw,
   ArrowRight,
-  CheckCircle2,
-  Clock,
   Coins,
+  Plus,
+  Edit2,
 } from 'lucide-react';
 import { Broker, Currency, Dividend, MonthlyDividendFlow } from '../types';
 import { formatCurrency } from '../utils/formatters';
@@ -22,6 +19,8 @@ interface ProventosScreenProps {
   fxRate: number;
   onNavigateLancar: (ticker?: string) => void;
   onSuccessToast?: (msg: string) => void;
+  onAddNewDividend?: () => void;
+  onEditDividend?: (dividend: Dividend) => void;
 }
 
 export const ProventosScreen: React.FC<ProventosScreenProps> = ({
@@ -32,6 +31,8 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
   fxRate,
   onNavigateLancar,
   onSuccessToast,
+  onAddNewDividend,
+  onEditDividend,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'CRONOGRAMA' | 'POR ATIVO' | 'HISTÓRICO'>('CRONOGRAMA');
   const [selectedGeo, setSelectedGeo] = useState<'ALL' | 'BR' | 'US'>('ALL');
@@ -47,11 +48,26 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
     return true;
   });
 
+  // Calculate dynamic totals
+  const totalBrlDividends = dividends
+    .filter((d) => d.market === 'BR')
+    .reduce((acc, d) => acc + d.totalAmount, 0);
+
+  const totalUsdDividends = dividends
+    .filter((d) => d.market === 'US')
+    .reduce((acc, d) => acc + d.totalAmount, 0);
+
+  // Annualized estimates
+  const annualTotalBrl = 38650.0;
+  const annualTotalUsd = 2450.0;
+  const monthlyAverageBrl = (annualTotalBrl / 12);
+  const monthlyAverageUsd = (annualTotalUsd / 12);
+
   const handleApplyReinvest = () => {
     setIsReinvestApplied(true);
     if (onSuccessToast) {
       onSuccessToast(
-        'Ordem de reinvestimento gerada: 1 cota de HGLG11 e 1 ação de AAPL compradas com proventos!'
+        'Ordem de reinvestimento gerada: 1 cota de HGLG11 e 1 ação de AAPL adquiridas com proventos!'
       );
     }
   };
@@ -112,12 +128,11 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
             </div>
             <div className="mt-1 flex items-baseline gap-1 font-mono-numbers">
               <span className="text-base font-bold text-white">
-                {hideValues ? '••••••' : 'R$ 3.220'}
+                {hideValues ? '••••••' : formatCurrency(monthlyAverageBrl, 'BRL', false, false)}
               </span>
-              <span className="text-[10px] text-[#94a3b8]">,00</span>
             </div>
             <div className="text-[10px] text-[#ffb95f] font-mono-numbers mt-0.5 font-medium">
-              {hideValues ? '+••••' : '+ US$ 204,16/mês'}
+              {hideValues ? '+••••' : `+ US$ ${monthlyAverageUsd.toFixed(2)}/mês`}
             </div>
           </div>
         </div>
@@ -152,7 +167,7 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
             key={tab}
             type="button"
             onClick={() => setActiveSubTab(tab)}
-            className={`py-1.5 text-xs font-bold rounded-lg transition-all ${
+            className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
               activeSubTab === tab
                 ? 'bg-[#38bdf8] text-[#051424] shadow-sm'
                 : 'text-[#94a3b8] hover:text-white'
@@ -190,7 +205,6 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
           {monthlyFlow.map((flow) => {
             const isRealized = flow.realizedBrl !== undefined;
             const amount = flow.realizedBrl ?? flow.projectedBrl ?? 0;
-            // Max height reference ~ 4500
             const heightPercent = Math.min(100, Math.max(15, (amount / 4200) * 100));
             const isCurrent = flow.isCurrent;
             const isSelected = selectedMonth === flow.month;
@@ -202,14 +216,12 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
                 className="flex-1 flex flex-col items-center cursor-pointer group h-full justify-end"
                 title={`${flow.month}: ${formatCurrency(amount, 'BRL')}`}
               >
-                {/* Value indicator for current month */}
                 {isCurrent && (
                   <div className="mb-1 text-[9px] font-bold font-mono-numbers text-[#ffb95f] bg-[#f59e0b]/20 px-1 rounded border border-[#f59e0b]/40 animate-bounce">
                     3.8k
                   </div>
                 )}
 
-                {/* Bar */}
                 <div
                   style={{ height: `${heightPercent}%` }}
                   className={`w-full max-w-[18px] rounded-t-sm transition-all duration-300 ${
@@ -221,7 +233,6 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
                   } ${isSelected ? 'ring-2 ring-white' : ''}`}
                 />
 
-                {/* Month label */}
                 <span
                   className={`text-[9px] mt-1.5 font-bold font-mono-numbers transition-colors ${
                     isCurrent
@@ -246,7 +257,7 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
           <button
             type="button"
             onClick={() => setSelectedGeo('ALL')}
-            className={`px-3 py-1 rounded-md text-xs font-bold font-display transition-all shrink-0 ${
+            className={`px-3 py-1 rounded-md text-xs font-bold font-display transition-all shrink-0 cursor-pointer ${
               selectedGeo === 'ALL'
                 ? 'bg-[#38bdf8] text-[#051424]'
                 : 'bg-[#0d1c2d] text-[#94a3b8] border border-[#1e293b] hover:text-white'
@@ -257,7 +268,7 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
           <button
             type="button"
             onClick={() => setSelectedGeo('BR')}
-            className={`px-3 py-1 rounded-md text-xs font-bold font-display transition-all flex items-center gap-1 shrink-0 ${
+            className={`px-3 py-1 rounded-md text-xs font-bold font-display transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
               selectedGeo === 'BR'
                 ? 'bg-[#38bdf8] text-[#051424]'
                 : 'bg-[#0d1c2d] text-[#94a3b8] border border-[#1e293b] hover:text-white'
@@ -269,7 +280,7 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
           <button
             type="button"
             onClick={() => setSelectedGeo('US')}
-            className={`px-3 py-1 rounded-md text-xs font-bold font-display transition-all flex items-center gap-1 shrink-0 ${
+            className={`px-3 py-1 rounded-md text-xs font-bold font-display transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
               selectedGeo === 'US'
                 ? 'bg-[#38bdf8] text-[#051424]'
                 : 'bg-[#0d1c2d] text-[#94a3b8] border border-[#1e293b] hover:text-white'
@@ -280,25 +291,38 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
           </button>
         </div>
 
-        {/* Broker Selector */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] shrink-0">
-            Custódia:
-          </span>
-          {['Todas', 'XP', 'Avenue', 'NuInvest', 'IBKR'].map((b) => (
+        {/* Broker Selector & New Dividend Button */}
+        <div className="flex items-center justify-between gap-2 overflow-x-auto pb-0.5 no-scrollbar">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8]">
+              Custódia:
+            </span>
+            {['Todas', 'XP', 'Avenue', 'NuInvest', 'IBKR', 'BTG'].map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setSelectedBroker(b)}
+                className={`px-2.5 py-0.5 rounded-md text-xs font-semibold font-display transition-all shrink-0 cursor-pointer ${
+                  selectedBroker === b
+                    ? 'bg-[#1c2b3c] text-white border border-[#38bdf8]/60 font-bold'
+                    : 'bg-[#0d1c2d] text-[#94a3b8] border border-[#1e293b] hover:text-white'
+                }`}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+
+          {onAddNewDividend && (
             <button
-              key={b}
               type="button"
-              onClick={() => setSelectedBroker(b)}
-              className={`px-2.5 py-0.5 rounded-md text-xs font-semibold font-display transition-all shrink-0 ${
-                selectedBroker === b
-                  ? 'bg-[#1c2b3c] text-white border border-[#38bdf8]/60 font-bold'
-                  : 'bg-[#0d1c2d] text-[#94a3b8] border border-[#1e293b] hover:text-white'
-              }`}
+              onClick={onAddNewDividend}
+              className="py-1 px-2.5 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#051424] text-[11px] font-bold rounded-lg font-display flex items-center gap-1 shrink-0 cursor-pointer transition-all shadow-sm"
             >
-              {b}
+              <Plus className="w-3 h-3 stroke-[3]" />
+              <span>Novo Provento</span>
             </button>
-          ))}
+          )}
         </div>
       </div>
 
@@ -317,7 +341,6 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
         {/* Dividend Rows matching Image 3 */}
         <div className="space-y-2.5">
           {filteredDividends.map((div) => {
-            // Status styling
             let statusBadge = (
               <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded font-mono-numbers bg-[#10b981]/15 text-[#56e5a9] border border-[#10b981]/30">
                 ● CONFIRMADO
@@ -347,7 +370,7 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
             return (
               <div
                 key={div.id}
-                className="bg-[#0d1c2d] border border-[#1e293b] rounded-xl p-3 shadow-md hover:border-[#38bdf8]/40 transition-colors"
+                className="bg-[#0d1c2d] border border-[#1e293b] rounded-xl p-3 shadow-md hover:border-[#38bdf8]/40 transition-colors relative group"
               >
                 {/* Header line: Ticker, Type, Broker, Status */}
                 <div className="flex items-center justify-between mb-1.5">
@@ -362,6 +385,18 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
                     <span className="text-[9px] px-1 py-0.2 rounded bg-[#162032] text-[#38bdf8] font-bold font-mono-numbers">
                       {div.broker}
                     </span>
+
+                    {/* Edit button */}
+                    {onEditDividend && (
+                      <button
+                        type="button"
+                        onClick={() => onEditDividend(div)}
+                        className="p-1 rounded bg-[#162032] hover:bg-[#1e293b] text-[#94a3b8] hover:text-[#ffb95f] transition-colors cursor-pointer ml-1"
+                        title="Editar provento"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
 
                   {statusBadge}
@@ -425,7 +460,7 @@ export const ProventosScreen: React.FC<ProventosScreenProps> = ({
           type="button"
           onClick={handleApplyReinvest}
           disabled={isReinvestApplied}
-          className="py-2 px-3.5 bg-[#38bdf8] hover:bg-[#7bd0ff] text-[#051424] font-bold text-xs rounded-lg font-display flex items-center gap-1 transition-all active:scale-[0.98] shadow-md shadow-[#38bdf8]/15 disabled:opacity-50"
+          className="py-2 px-3.5 bg-[#38bdf8] hover:bg-[#7bd0ff] text-[#051424] font-bold text-xs rounded-lg font-display flex items-center gap-1 transition-all active:scale-[0.98] shadow-md shadow-[#38bdf8]/15 disabled:opacity-50 cursor-pointer"
         >
           <span>{isReinvestApplied ? 'Aplicado ✔' : 'Aplicar'}</span>
           <ArrowRight className="w-3.5 h-3.5" />

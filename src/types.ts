@@ -99,3 +99,20 @@ export interface Transaction {
   total: number;
   timestamp: number;
 }
+
+export type UserRole = 'admin' | 'cliente';
+
+export interface AppUser {
+  id: number;
+  uid?: string | null;
+  fullName: string;
+  name: string;
+  email: string;
+  cpf?: string | null;
+  role: UserRole;
+  status: 'ativo' | 'inativo';
+  displayName?: string | null;
+  photoUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
