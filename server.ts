@@ -24,6 +24,8 @@ import {
   seedAdminUserIfEmpty,
   getOrCreateUser,
 } from './src/db/users.ts';
+import { initializeDatabase } from './src/db/init.ts';
+import { pool } from './src/db/index.ts';
 import { optionalAuth, requireAuth, AuthRequest } from './src/middleware/auth.ts';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -33,12 +35,40 @@ async function startServer() {
   const app = express();
   app.use(express.json());
 
-  // Automatically ensure database has initial seed data & admin user on startup
-  seedIfEmpty().catch((err) => {
-    console.error('Initial DB seed note:', err);
+  // Automatically ensure database schema, tables, seed data & admin user on startup
+  initializeDatabase().catch((err) => {
+    console.error('Initial DB initialization note:', err);
   });
-  seedAdminUserIfEmpty().catch((err) => {
-    console.error('Initial Admin User seed note:', err);
+
+  // Health & Database status endpoint (ideal for VPS monitoring and Docker healthcheck)
+  app.get('/api/health', async (req, res) => {
+    try {
+      const client = await pool.connect();
+      try {
+        const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
+        res.json({
+          status: 'ok',
+          uptime: process.uptime(),
+          database: {
+            connected: true,
+            currentTime: result.rows[0]?.current_time,
+            version: result.rows[0]?.pg_version,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      } finally {
+        client.release();
+      }
+    } catch (err: any) {
+      res.status(500).json({
+        status: 'error',
+        database: {
+          connected: false,
+          error: err.message,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 
   // User sync endpoint (called after Firebase Auth login)

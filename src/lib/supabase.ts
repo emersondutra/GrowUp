@@ -412,7 +412,34 @@ export const SUPABASE_MIGRATION_SQL = `-- ======================================
 -- 1. Enable UUID Extension (se necessário)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 2. Tabela de Posições / Ativos da Carteira
+-- 2. Tabela de Usuários (Admin e Clientes)
+CREATE TABLE IF NOT EXISTS public.users (
+    id SERIAL PRIMARY KEY,
+    uid TEXT UNIQUE,
+    full_name TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL UNIQUE,
+    cpf TEXT UNIQUE,
+    role TEXT NOT NULL DEFAULT 'cliente' CHECK (role IN ('admin', 'cliente')),
+    status TEXT NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo', 'inativo')),
+    display_name TEXT,
+    photo_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Inserção do Usuário Administrador Obrigatório
+INSERT INTO public.users (full_name, name, email, cpf, role, status, display_name)
+VALUES ('Emerson Rocha Dutra', 'Emerson', 'emerson.dutra@gmail.com', '01576230171', 'admin', 'ativo', 'Emerson Rocha Dutra')
+ON CONFLICT (email) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    name = EXCLUDED.name,
+    cpf = EXCLUDED.cpf,
+    role = EXCLUDED.role,
+    status = EXCLUDED.status,
+    updated_at = NOW();
+
+-- 3. Tabela de Posições / Ativos da Carteira
 CREATE TABLE IF NOT EXISTS public.positions (
     id TEXT PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,

@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # =========================================================
+  # 1. Banco de Dados PostgreSQL 16
+  # =========================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: growup_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-growup_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-growup_secret_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-growup}
+    ports:
+      - "127.0.0.1:5432:5432" # Expõe localmente para backups / pg_dump seguro
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-growup_user} -d ${POSTGRES_DB:-growup}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - growup_network
+
+  # =========================================================
+  # 2. Aplicação GrowUp Full-Stack (Express + Vite + Drizzle)
+  # =========================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: growup_app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-growup_user}:${POSTGRES_PASSWORD:-growup_secret_pass}@postgres:5432/${POSTGRES_DB:-growup}
+      DB_SSL: "false"
+      # Opcional: credenciais Gemini se desejar inteligência artificial no servidor
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    ports:
+      - "3000:3000"
+    networks:
+      - growup_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  growup_network:
+    driver: bridge

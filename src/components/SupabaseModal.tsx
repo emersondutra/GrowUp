@@ -465,6 +465,41 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
               </li>
             </ol>
           </div>
+
+          {/* VPS & Self-Hosted PostgreSQL Card */}
+          <div className="p-3.5 bg-gradient-to-r from-[#0c2438] to-[#081827] border border-[#38bdf8]/30 rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-white font-display uppercase tracking-wider flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5 text-[#38bdf8]" />
+                Deploy em VPS com PostgreSQL Próprio
+              </span>
+              <span className="text-[10px] bg-[#38bdf8]/20 text-[#38bdf8] font-bold px-2 py-0.5 rounded border border-[#38bdf8]/40 font-mono-numbers">
+                DOCKER & VPS READY
+              </span>
+            </div>
+            <p className="text-[11px] text-[#94a3b8] leading-relaxed">
+              O projeto foi configurado com suporte nativo a <code className="text-white">DATABASE_URL</code> e variáveis padrão PostgreSQL.
+              Arquivos de deploy gerados na raiz:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono-numbers text-[10px]">
+              <div className="p-2 bg-[#051424] border border-[#1e293b] rounded-lg">
+                <span className="text-white font-bold block">docker-compose.yml</span>
+                <span className="text-[#94a3b8]">App + Postgres 16</span>
+              </div>
+              <div className="p-2 bg-[#051424] border border-[#1e293b] rounded-lg">
+                <span className="text-white font-bold block">postgres-init.sql</span>
+                <span className="text-[#94a3b8]">DDL + Seed Admin</span>
+              </div>
+              <div className="p-2 bg-[#051424] border border-[#1e293b] rounded-lg">
+                <span className="text-white font-bold block">DEPLOY_VPS.md</span>
+                <span className="text-[#94a3b8]">Guia Passo a Passo</span>
+              </div>
+            </div>
+            <div className="pt-1 flex items-center justify-between text-[10px] text-[#94a3b8]">
+              <span>Formato: <code className="text-[#38bdf8]">postgresql://user:pass@localhost:5432/growup</code></span>
+              <span className="text-[#10b981]">Auto-inicialização de tabelas ativa</span>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
